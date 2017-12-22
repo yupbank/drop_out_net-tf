@@ -28,13 +28,15 @@ def deep_cf_model(u, v, u_content, v_content, rank_out=200, model_layers=[800, 4
     with slim.arg_scope([slim.fully_connected], 
                         activation_fn=None):
 
-        u_emb = slim.fully_connected(u_last, rank_out)
-        v_emb = slim.fully_connected(v_last, rank_out)
+        u_emb = slim.fully_connected(u_last, rank_out, scope='user_embed')
+        v_emb = slim.fully_connected(v_last, rank_out, scope='item_embed')
             
     pred = tf.multiply(u_emb, v_emb)
 
     return pred
 
 
-def wmf(pairs, weight):
-    return
+def wmf(num_of_user, num_of_item, n_components):
+    return tf.contrib.factorization.WALSModel(num_of_user, num_of_item, n_components)
+
+
