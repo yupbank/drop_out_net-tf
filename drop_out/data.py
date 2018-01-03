@@ -20,26 +20,30 @@ CONTINUOUS_COLS = []
 def input_parser(line):
     items = tf.decode_csv(line, CSV_COLUMN_DEFAULTS, '\t')
     features = dict(zip(CSV_COLUMNS, items))
-    for muti_value_col in MUTLI_VALUE_COLS:
-        f = features[muti_value_col]
-        f = tf.string_split(tf.expand_dims(f, 0), ',').values
-        f = tf.one_hot(tf.string_to_hash_bucket_fast(f, 19), depth=19)
-        f = tf.reduce_sum(f, 0)
-        features[muti_value_col] = f
     for cate in CATEGORICAL_COLS:
         f = features[cate]
         f = tf.one_hot(tf.string_to_hash_bucket_fast(f, 19), depth=19)
-        features[cate] = f
+        features[cate] = tf.squeeze(f)
+
+    for cate in CSV_COLUMNS:
+        if cate in MUTLI_VALUE_COLS:
+            f = features[cate]
+            f = tf.string_split(tf.expand_dims(f, 0), ',').values
+            f = tf.one_hot(tf.string_to_hash_bucket_fast(f, 19), depth=19)
+            f = tf.reduce_sum(f, 0)
+            features[cate] = f
+        elif cate not in CATEGORICAL_COLS:
+            features[cate] = tf.expand_dims(tf.to_float(features[cate]), -1)
 
     return features
 
 
-def get_dataset(dataset='../example_data/users.csv', batch_size=2):
+def get_dataset(dataset='example_data/users.csv', batch_size=4):
     dataset = tf.contrib.data.TextLineDataset(dataset)
 
     dataset = dataset.skip(1).map(input_parser)
 
-    dataset = dataset.shuffle(buffer_size=100)
+    # dataset = dataset.shuffle(buffer_size=100)
     dataset = dataset.batch(batch_size)
     return dataset
 
@@ -50,9 +54,12 @@ def main():
         dataset = get_dataset()
         d = dataset.make_one_shot_iterator().get_next()
         print d
-        while True:
-            print sess.run(d)
-
+        x = tf.concat(d.values(), 1)
+        try:
+            while True:
+                print sess.run(x).shape
+        except:
+            pass
 
 if __name__ == "__main__":
     main()
