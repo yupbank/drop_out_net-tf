@@ -53,7 +53,6 @@ def main():
         sess = tf.InteractiveSession()
         dataset = get_dataset()
         d = dataset.make_one_shot_iterator().get_next()
-        print d
         x = tf.concat(d.values(), 1)
         try:
             while True:
