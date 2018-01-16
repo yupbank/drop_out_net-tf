@@ -28,7 +28,7 @@ def post_process(data):
     data['action'] = tf.ones_like(data['action'])
     return data
 
-def reduce_fn(key, records):
+def reduce_by_item(key, records):
     return records.batch(NUM_OF_ITEM).map(post_process)
 
 def get_dataset(file_name='example_data/interactions.csv'):
@@ -39,20 +39,18 @@ def get_dataset(file_name='example_data/interactions.csv'):
                 .map(input_parser)
                 .filter(is_delete_action)
                 .group_by_window(lambda r: tf.cast(r['iid'], tf.int64),
-                                reduce_fn,
+                                reduce_by_item,
                                 NUM_OF_ITEM)
                 )
     return dataset
 
-def wmf(num_user=NUM_OF_USER, num_item=NUM_OF_ITEM, embedding_dimension=EMBEDDING_DIMENSION):
-    return tf.contrib.factorization.WALSModel(num_user, num_item, embedding_dimension)
 
 def main(_):
     with tf.Graph().as_default() as g:
         sess = tf.InteractiveSession()
         dataset = get_dataset()
         data = dataset.make_one_shot_iterator().get_next()
-        model = wmf()
+        model = model.wmf(NUM_OF_USER, NUM_OF_ITEM, EMBEDDING_DIMENSION)
         model_init_op = model.initialize_op
         col_update_prep_gramian_op = model.col_update_prep_gramian_op
         row_update_prep_gramian_op = model.row_update_prep_gramian_op
@@ -70,8 +68,11 @@ def main(_):
                 values = tf.concat([tf.expand_dims(data['uid'], 1), tf.expand_dims(data['iid'], 1)], 1)
                 sp_input = tf.SparseTensor(tf.cast(values, tf.int64), tf.ones_like(data['uid'], dtype=tf.float32), [NUM_OF_USER, NUM_OF_ITEM])
                 new_col_factor, update_op, unregularized_loss, regularization, sum_weights = model.update_col_factors(sp_input)
-                print sess.run([update_op, unregularized_loss])
+                sess.run([update_op])
         except Exception as e:
             pass
+
+        print sess.run([model.row_factors[0], model.col_factors[0]])
+
 if __name__ == "__main__":
     tf.app.run()

@@ -9,10 +9,12 @@ def deep_cf_model(u, v, u_content, v_content, rank_out=200, model_layers=[800, 4
     user_content: user content info
     item_content: item content info
     rank_out: dimension of out
+    model_layers: list of number of hidden activations 
+    is_training: indicating whether the model is used for trainning
     """
 
-    u_concat = tf.concat([u, u_content], 1)
-    v_concat = tf.concat([v, v_content], 1)
+    u_concat = tf.stop_gradient(tf.concat([u, u_content], 1))
+    v_concat = tf.stop_gradient(tf.concat([v, v_content], 1))
 
     with slim.arg_scope([slim.fully_connected], 
                         activation_fn=tf.nn.tanh,
@@ -38,5 +40,3 @@ def deep_cf_model(u, v, u_content, v_content, rank_out=200, model_layers=[800, 4
 
 def wmf(num_of_user, num_of_item, n_components):
     return tf.contrib.factorization.WALSModel(num_of_user, num_of_item, n_components)
-
-
